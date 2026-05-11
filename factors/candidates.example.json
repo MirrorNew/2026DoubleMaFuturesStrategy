@@ -1,0 +1,26 @@
+[
+  {
+    "factor_name": "volume_adjusted_momentum_24",
+    "hypothesis": "Momentum is more reliable when confirmed by volume expansion.",
+    "formula": "zscore(pct_change(close, 24), 120) * zscore(volume / sma(volume, 20), 120)",
+    "direction": "higher_is_better",
+    "lookback": 120,
+    "risk": "Can chase late-stage trends unless paired with volatility filters."
+  },
+  {
+    "factor_name": "trend_quality_12_48",
+    "hypothesis": "A fast EMA above a slow EMA is more useful when volatility is not extreme.",
+    "formula": "zscore(ema(close, 12) / ema(close, 48) - 1, 120) / (abs(zscore(atr(high, low, close, 14) / close, 120)) + 1)",
+    "direction": "higher_is_better",
+    "lookback": 120,
+    "risk": "EMA factors may degrade in choppy range-bound markets."
+  },
+  {
+    "factor_name": "range_breakout_48",
+    "hypothesis": "Breakouts near the recent range high are more meaningful when accompanied by high volume.",
+    "formula": "zscore(close / rolling_max(close, 48) - 1, 120) * zscore(volume, 120)",
+    "direction": "higher_is_better",
+    "lookback": 120,
+    "risk": "Breakout factors can suffer during false breakouts and news spikes."
+  }
+]

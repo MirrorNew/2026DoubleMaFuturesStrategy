@@ -1,0 +1,7 @@
+pandas>=2.2
+numpy>=1.26
+scipy>=1.11
+pyarrow>=15
+pydantic>=2.7
+python-dotenv>=1.0
+openai>=1.30

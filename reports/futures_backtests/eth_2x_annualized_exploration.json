@@ -1,0 +1,315 @@
+[
+  {
+    "name": "base_2x_context_weekend_skip",
+    "overrides": {},
+    "train": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-20-42.zip",
+      "trades": 193,
+      "profit_pct": 74.8787498603,
+      "cagr": 16.8650117193597,
+      "winrate": 46.1139896373057,
+      "dd": 26.3712483577874,
+      "pf": 1.2506172669624565,
+      "sharpe": 0.2481431605306382,
+      "sortino": 0.630855828816143,
+      "calmar": 4.144142512043019,
+      "long_pct": 61.75409619159999,
+      "short_pct": 13.12465366870001
+    },
+    "valid": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-20-51.zip",
+      "trades": 65,
+      "profit_pct": 35.56567840099999,
+      "cagr": 25.210575270088363,
+      "winrate": 52.307692307692314,
+      "dd": 14.954215541802245,
+      "pf": 1.4042975305411274,
+      "sharpe": 0.34476783644125836,
+      "sortino": 0.9306256709107056,
+      "calmar": 9.197863165217383,
+      "long_pct": 13.223990213099999,
+      "short_pct": 22.3416881879
+    }
+  },
+  {
+    "name": "weekend_on",
+    "overrides": {
+      "VDM_WEEKEND_MODE": "0"
+    },
+    "train": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-21-32.zip",
+      "trades": 264,
+      "profit_pct": 116.61423857739999,
+      "cagr": 24.05165513939689,
+      "winrate": 45.07575757575758,
+      "dd": 13.940317832050885,
+      "pf": 1.2903245500524299,
+      "sharpe": 0.3827806141321638,
+      "sortino": 1.0268356958219171,
+      "calmar": 12.209157354227079,
+      "long_pct": 120.2670949052,
+      "short_pct": -3.6528563277999937
+    },
+    "valid": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-21-47.zip",
+      "trades": 96,
+      "profit_pct": 41.9070215682,
+      "cagr": 29.51216481552279,
+      "winrate": 48.95833333333333,
+      "dd": 13.349801327116914,
+      "pf": 1.3137276422867403,
+      "sharpe": 0.40877258421726115,
+      "sortino": 1.0590133518731746,
+      "calmar": 12.140357518188402,
+      "long_pct": 16.271067139699998,
+      "short_pct": 25.635954428500003
+    }
+  },
+  {
+    "name": "trail_later",
+    "overrides": {
+      "VDM_TRAIL_START": "0.03",
+      "VDM_TREND_TRAIL_START": "0.08"
+    },
+    "train": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-22-13.zip",
+      "trades": 192,
+      "profit_pct": 93.72875123120001,
+      "cagr": 20.24882869184852,
+      "winrate": 45.3125,
+      "dd": 22.150181585265834,
+      "pf": 1.312058709034531,
+      "sharpe": 0.2998845477949863,
+      "sortino": 0.7890986074982853,
+      "calmar": 6.175929441677457,
+      "long_pct": 57.712810121299995,
+      "short_pct": 36.0159411099
+    },
+    "valid": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-22-30.zip",
+      "trades": 63,
+      "profit_pct": 19.910661500499995,
+      "cagr": 14.357690934395674,
+      "winrate": 47.61904761904761,
+      "dd": 19.49998194323482,
+      "pf": 1.1912290768435523,
+      "sharpe": 0.17512302115500739,
+      "sortino": 0.45530720971816246,
+      "calmar": 3.948852964744083,
+      "long_pct": 14.680737118700002,
+      "short_pct": 5.2299243817999965
+    }
+  },
+  {
+    "name": "bigger_runner",
+    "overrides": {
+      "VDM_STRUCTURE_TARGET_MAX_RR": "5",
+      "VDM_TREND_TARGET_MAX_RR": "8",
+      "VDM_TRAIL_START": "0.03",
+      "VDM_TREND_TRAIL_START": "0.08"
+    },
+    "train": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-23-03.zip",
+      "trades": 192,
+      "profit_pct": 96.5204243591,
+      "cagr": 20.729513763661323,
+      "winrate": 45.3125,
+      "dd": 21.890305796670827,
+      "pf": 1.3213532520738378,
+      "sharpe": 0.3080425549747586,
+      "sortino": 0.812601591896129,
+      "calmar": 6.435379753595903,
+      "long_pct": 58.32382106299999,
+      "short_pct": 38.1966032961
+    },
+    "valid": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-23-18.zip",
+      "trades": 63,
+      "profit_pct": 19.910661500499995,
+      "cagr": 14.357690934395674,
+      "winrate": 47.61904761904761,
+      "dd": 19.49998194323482,
+      "pf": 1.1912290768435523,
+      "sharpe": 0.17512302115500739,
+      "sortino": 0.45530720971816246,
+      "calmar": 3.948852964744083,
+      "long_pct": 14.680737118700002,
+      "short_pct": 5.2299243817999965
+    }
+  },
+  {
+    "name": "looser_entries",
+    "overrides": {
+      "VDM_ZONE_PCT_BUFFER": "0.002",
+      "VDM_BODY_PCT_MIN": "0.0008"
+    },
+    "train": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-23-51.zip",
+      "trades": 197,
+      "profit_pct": 62.84185580729999,
+      "cagr": 14.564111447171978,
+      "winrate": 45.68527918781726,
+      "dd": 29.54012855053903,
+      "pf": 1.2015277499028598,
+      "sharpe": 0.20827701590365325,
+      "sortino": 0.5248818504307076,
+      "calmar": 3.1048698965754125,
+      "long_pct": 63.225147896,
+      "short_pct": -0.3832920886999892
+    },
+    "valid": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-24-04.zip",
+      "trades": 65,
+      "profit_pct": 35.56567840099999,
+      "cagr": 25.210575270088363,
+      "winrate": 52.307692307692314,
+      "dd": 14.954215541802245,
+      "pf": 1.4042975305411274,
+      "sharpe": 0.34476783644125836,
+      "sortino": 0.9306256709107056,
+      "calmar": 9.197863165217383,
+      "long_pct": 13.223990213099999,
+      "short_pct": 22.3416881879
+    }
+  },
+  {
+    "name": "more_loose_entries",
+    "overrides": {
+      "VDM_ZONE_PCT_BUFFER": "0.0015",
+      "VDM_BODY_PCT_MIN": "0.0006",
+      "VDM_PULLBACK_SCORE": "3"
+    },
+    "train": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-24-33.zip",
+      "trades": 203,
+      "profit_pct": 69.4733652352,
+      "cagr": 15.846355681600155,
+      "winrate": 45.320197044334975,
+      "dd": 25.981101025893427,
+      "pf": 1.2152159923578372,
+      "sharpe": 0.2273036398311383,
+      "sortino": 0.5868748306269678,
+      "calmar": 3.9027215842302914,
+      "long_pct": 60.8811299735,
+      "short_pct": 8.592235261700015
+    },
+    "valid": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-24-46.zip",
+      "trades": 67,
+      "profit_pct": 35.4092285923,
+      "cagr": 25.10379336179578,
+      "winrate": 52.23880597014925,
+      "dd": 14.39192818811491,
+      "pf": 1.3910426856217009,
+      "sharpe": 0.3463170819304854,
+      "sortino": 0.9409164982245695,
+      "calmar": 9.515179062362805,
+      "long_pct": 12.590851385499995,
+      "short_pct": 22.818377206799997
+    }
+  },
+  {
+    "name": "htf_filter_on",
+    "overrides": {
+      "VDM_USE_HTF_FILTER": "1"
+    },
+    "train": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-25-18.zip",
+      "trades": 154,
+      "profit_pct": 71.10598822219998,
+      "cagr": 16.1564666622372,
+      "winrate": 46.103896103896105,
+      "dd": 17.646613637765117,
+      "pf": 1.2837901484920928,
+      "sharpe": 0.22521871300625373,
+      "sortino": 0.6106839687790748,
+      "calmar": 5.881005493446366,
+      "long_pct": 57.04651285410001,
+      "short_pct": 14.059475368099994
+    },
+    "valid": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-25-30.zip",
+      "trades": 51,
+      "profit_pct": 33.65032925849999,
+      "cagr": 23.901060718619902,
+      "winrate": 50.98039215686274,
+      "dd": 14.841631849689119,
+      "pf": 1.4947646221999131,
+      "sharpe": 0.31648460829564273,
+      "sortino": 0.8501879449382658,
+      "calmar": 8.768537158313153,
+      "long_pct": 10.5882753056,
+      "short_pct": 23.062053952899998
+    }
+  },
+  {
+    "name": "weak_only_2x",
+    "overrides": {
+      "VDM_TRADE_STRONG": "0",
+      "VDM_TRADE_WEAK": "1"
+    },
+    "train": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-25-49.zip",
+      "trades": 48,
+      "profit_pct": 25.317532579299996,
+      "cagr": 6.4950700013783225,
+      "winrate": 47.91666666666667,
+      "dd": 12.243815437558169,
+      "pf": 1.3541569594774447,
+      "sharpe": 0.08417839314070666,
+      "sortino": 0.19339627462819792,
+      "calmar": 3.0179454722095724,
+      "long_pct": 35.4984854957,
+      "short_pct": -10.180952916399995
+    },
+    "valid": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-25-59.zip",
+      "trades": 20,
+      "profit_pct": 21.6319863355,
+      "cagr": 15.56836280346776,
+      "winrate": 65.0,
+      "dd": 6.682823450595064,
+      "pf": 1.8750034643102658,
+      "sharpe": 0.19323639133340692,
+      "sortino": 0.49378210488471147,
+      "calmar": 12.518603817497949,
+      "long_pct": 15.352828378100003,
+      "short_pct": 6.2791579574
+    }
+  },
+  {
+    "name": "strong_only_2x",
+    "overrides": {
+      "VDM_TRADE_STRONG": "1",
+      "VDM_TRADE_WEAK": "0"
+    },
+    "train": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-26-24.zip",
+      "trades": 149,
+      "profit_pct": 45.41387100299998,
+      "cagr": 11.004559425953575,
+      "winrate": 45.63758389261745,
+      "dd": 28.00463264652383,
+      "pf": 1.1941947293317343,
+      "sharpe": 0.15177161871507186,
+      "sortino": 0.40083243316212774,
+      "calmar": 2.366821074036611,
+      "long_pct": 24.26241908499999,
+      "short_pct": 21.15145191800001
+    },
+    "valid": {
+      "zip": "D:\\LLM-CodexProject\\trade\\llm_freqtrade_factor_lab\\user_data\\backtest_results\\backtest-result-2026-05-12_00-26-37.zip",
+      "trades": 47,
+      "profit_pct": 11.165612858200006,
+      "cagr": 8.134937363377803,
+      "winrate": 46.808510638297875,
+      "dd": 16.898611948930494,
+      "pf": 1.1668509472991084,
+      "sharpe": 0.11480275269667614,
+      "sortino": 0.3251153489408101,
+      "calmar": 2.5553536655547053,
+      "long_pct": -2.138931503999999,
+      "short_pct": 13.3045443622
+    }
+  }
+]

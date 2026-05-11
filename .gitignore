@@ -1,0 +1,27 @@
+# Local secrets and IDE state
+.env
+.idea/
+__pycache__/
+*.py[cod]
+
+# Large downloaded market data and generated artifacts
+external_data/
+user_data/data/
+user_data/backtest_results/
+reports/futures_backtests/plots*/
+reports/futures_backtests/**/*.html
+reports/futures_backtests/**/*.zip
+reports/futures_backtests/**/*.feather
+reports/video_*/
+user_data/plot/
+
+# Keep lightweight research summaries
+!reports/
+!reports/futures_backtests/
+!reports/futures_backtests/*.md
+!reports/futures_backtests/*.json
+
+# Freqtrade runtime noise
+user_data/logs/
+user_data/hyperopt_results/
+user_data/notebooks/
