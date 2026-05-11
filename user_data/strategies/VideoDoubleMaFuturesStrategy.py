@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 
 import pandas as pd
-from freqtrade.strategy import IStrategy, merge_informative_pair
+from freqtrade.strategy import IStrategy, merge_informative_pair, stoploss_from_absolute
 from pandas import DataFrame
 
 
@@ -66,6 +66,7 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
     }
 
     trailing_stop = False
+    use_custom_stoploss = True
     use_exit_signal = True
     exit_profit_only = False
     ignore_roi_if_entry_signal = False
@@ -117,12 +118,12 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
     swing_stop_atr_buffer = _env_float("VDM_SWING_STOP_ATR_BUFFER", 0.10)
     swing_stop_min_risk_pct = _env_float("VDM_SWING_STOP_MIN_RISK_PCT", 0.002)
     swing_stop_max_risk_pct = _env_float("VDM_SWING_STOP_MAX_RISK_PCT", 0.028)
-    risk_reward_min = _env_float("VDM_RR_MIN", 2.0)
-    risk_reward_preferred = _env_float("VDM_RR_PREF", 3.0)
-    structure_target_max_rr = _env_float("VDM_STRUCTURE_TARGET_MAX_RR", 4.0)
-    trend_structure_target_max_rr = _env_float("VDM_TREND_TARGET_MAX_RR", 6.0)
+    risk_reward_min = _env_float("VDM_RR_MIN", 2.3)
+    risk_reward_preferred = _env_float("VDM_RR_PREF", 3.5)
+    structure_target_max_rr = _env_float("VDM_STRUCTURE_TARGET_MAX_RR", 5.0)
+    trend_structure_target_max_rr = _env_float("VDM_TREND_TARGET_MAX_RR", 7.0)
     use_htf_context = _env_bool("VDM_USE_HTF_CONTEXT", True)
-    use_htf_filter = _env_bool("VDM_USE_HTF_FILTER", False)
+    use_htf_filter = _env_bool("VDM_USE_HTF_FILTER", True)
     htf_score_min = _env_int("VDM_HTF_SCORE_MIN", 3)
     htf_trend_score_min = _env_int("VDM_HTF_TREND_SCORE_MIN", 4)
     htf_slope_min = _env_float("VDM_HTF_SLOPE_MIN", 0.0)
@@ -130,10 +131,17 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
     weekend_entry_mode = _env_int("VDM_WEEKEND_MODE", 0)
     weekend_profit_target = _env_float("VDM_WEEKEND_PROFIT_TARGET", 0.008)
     weekend_stop_atr_buffer = _env_float("VDM_WEEKEND_STOP_ATR_BUFFER", 0.05)
+    # 额外的 1-2 根 K 假突破早退默认关闭；计划结构止损已由 custom_stoploss 提前执行。
+    early_fail_window = _env_int("VDM_EARLY_FAIL_WINDOW", 0)
+    early_fail_atr_buffer = _env_float("VDM_EARLY_FAIL_ATR_BUFFER", 0.05)
+    early_fail_max_profit = _env_float("VDM_EARLY_FAIL_MAX_PROFIT", 0.002)
     # 趋势不强时 +2% 后保护利润；趋势强时延后到 +5%，尽量吃到更大波段。
     large_profit_trailing_start = _env_float("VDM_TRAIL_START", 0.02)
     trend_profit_trailing_start = _env_float("VDM_TREND_TRAIL_START", 0.05)
-    large_profit_retrace_ratio = 0.5
+    trail_normal_enabled = _env_bool("VDM_TRAIL_NORMAL", False)
+    trail_trend_enabled = _env_bool("VDM_TRAIL_TREND", True)
+    large_profit_retrace_ratio = _env_float("VDM_RETRACE_RATIO", 0.50)
+    trend_profit_retrace_ratio = _env_float("VDM_TREND_RETRACE_RATIO", 0.60)
 
     plot_config = {
         "main_plot": {
@@ -197,6 +205,48 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
         if min_stake is not None:
             stake = max(stake, min_stake)
         return stake
+
+    def custom_stoploss(
+        self,
+        pair: str,
+        trade,
+        current_time: datetime,
+        current_rate: float,
+        current_profit: float,
+        after_fill: bool,
+        **kwargs,
+    ) -> float | None:
+        """把人工策略里的结构止损价转换成真实止损。
+
+        `custom_exit` 只能在 K 线收盘后判断结构失效，长实体假突破会让亏损变大。
+        这里使用入场 K 线记录的突破实体线、密集区边界和前高/前低，提前挂出计划止损。
+        """
+
+        dataframe, _ = self.dp.get_analyzed_dataframe(pair=pair, timeframe=self.timeframe)
+        if dataframe.empty:
+            return self.stoploss
+
+        candles_until_now = self._candles_until(dataframe, current_time)
+        if candles_until_now.empty:
+            return self.stoploss
+
+        entry_candle = self._entry_candle(candles_until_now, trade)
+        if entry_candle is None:
+            return self.stoploss
+
+        entry_tag = getattr(trade, "enter_tag", None) or getattr(trade, "entry_tag", None) or ""
+        is_short = bool(getattr(trade, "is_short", False))
+        stop_rate = self._planned_stop_rate(entry_candle, entry_tag, is_short)
+        if stop_rate is None:
+            return self.stoploss
+
+        leverage = float(getattr(trade, "leverage", self.target_leverage) or self.target_leverage)
+        return stoploss_from_absolute(
+            float(stop_rate),
+            current_rate,
+            is_short=is_short,
+            leverage=leverage,
+        )
 
     @staticmethod
     def _true_range(dataframe: DataFrame) -> pd.Series:
@@ -376,6 +426,16 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
             return None
         return candles.iloc[-1]
 
+    @staticmethod
+    def _candles_until(dataframe: DataFrame, current_time: datetime) -> DataFrame:
+        candle_time = pd.Timestamp(current_time)
+        if candle_time.tzinfo is None:
+            candle_time = candle_time.tz_localize("UTC")
+        else:
+            candle_time = candle_time.tz_convert("UTC")
+        dates = pd.to_datetime(dataframe["date"], utc=True)
+        return dataframe.loc[dates <= candle_time]
+
     def _planned_stop_rate(self, entry_candle: pd.Series, entry_tag: str, is_short: bool) -> float | None:
         atr = float(entry_candle.get("atr_14", 0.0))
         atr_buffer = atr * self.stop_atr_buffer
@@ -493,6 +553,12 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
     def _trailing_start(self, entry_candle: pd.Series, is_short: bool) -> float:
         return self.trend_profit_trailing_start if self._is_strong_trend(entry_candle, is_short) else self.large_profit_trailing_start
 
+    def _trailing_enabled(self, entry_candle: pd.Series, is_short: bool) -> bool:
+        return self.trail_trend_enabled if self._is_strong_trend(entry_candle, is_short) else self.trail_normal_enabled
+
+    def _trailing_retrace_ratio(self, entry_candle: pd.Series, is_short: bool) -> float:
+        return self.trend_profit_retrace_ratio if self._is_strong_trend(entry_candle, is_short) else self.large_profit_retrace_ratio
+
     def _is_strong_trend(self, entry_candle: pd.Series, is_short: bool) -> bool:
         if is_short:
             score = entry_candle.get("short_direction_score_4h", float("nan"))
@@ -503,6 +569,67 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
         if pd.isna(score):
             return False
         return score >= self.htf_trend_score_min and local_score >= self.strong_breakout_score_threshold
+
+    def _early_false_breakout_exit(
+        self,
+        candles_until_now: DataFrame,
+        entry_candle: pd.Series,
+        trade,
+        current_rate: float,
+        current_profit: float,
+        is_short: bool,
+    ) -> str | None:
+        if self.early_fail_window <= 0 or current_profit > self.early_fail_max_profit:
+            return None
+
+        open_time = pd.Timestamp(trade.open_date_utc)
+        if open_time.tzinfo is None:
+            open_time = open_time.tz_localize("UTC")
+        else:
+            open_time = open_time.tz_convert("UTC")
+
+        dates = pd.to_datetime(candles_until_now["date"], utc=True)
+        post_entry = candles_until_now.loc[dates > open_time]
+        if post_entry.empty:
+            return None
+        if len(post_entry) > self.early_fail_window:
+            return None
+
+        last_candle = post_entry.iloc[-1]
+        atr = float(entry_candle.get("atr_14", 0.0))
+        buffer = atr * self.early_fail_atr_buffer
+        close = float(last_candle.get("close", current_rate))
+
+        if is_short:
+            breakout_line = float(entry_candle.get("pullback_stop_short_line", float("nan")))
+            cluster_line = float(entry_candle.get("cluster_zone_low", float("nan")))
+            entry_low = float(entry_candle.get("low", float("nan")))
+            back_inside_body = pd.notna(breakout_line) and close > breakout_line + buffer
+            failed_to_extend = (
+                len(post_entry) >= self.early_fail_window
+                and pd.notna(entry_low)
+                and pd.notna(cluster_line)
+                and float(post_entry["low"].min()) >= entry_low - buffer
+                and close >= cluster_line - buffer
+            )
+            if back_inside_body or failed_to_extend:
+                return "short_early_false_breakout_exit"
+            return None
+
+        breakout_line = float(entry_candle.get("pullback_stop_long_line", float("nan")))
+        cluster_line = float(entry_candle.get("cluster_zone_high", float("nan")))
+        entry_high = float(entry_candle.get("high", float("nan")))
+        back_inside_body = pd.notna(breakout_line) and close < breakout_line - buffer
+        failed_to_extend = (
+            len(post_entry) >= self.early_fail_window
+            and pd.notna(entry_high)
+            and pd.notna(cluster_line)
+            and float(post_entry["high"].max()) <= entry_high + buffer
+            and close <= cluster_line + buffer
+        )
+        if back_inside_body or failed_to_extend:
+            return "long_early_false_breakout_exit"
+        return None
 
     def _structure_target(self, entry_candle: pd.Series, is_short: bool) -> float:
         if self.use_pivot_structure:
@@ -957,7 +1084,11 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
         if dataframe.empty:
             return None
 
-        last_candle = dataframe.iloc[-1]
+        candles_until_now = self._candles_until(dataframe, current_time)
+        if candles_until_now.empty:
+            return None
+
+        last_candle = candles_until_now.iloc[-1]
         entry_tag = getattr(trade, "enter_tag", None) or getattr(trade, "entry_tag", None) or ""
         is_short = bool(getattr(trade, "is_short", False))
         trade_key = self._trade_key(pair, trade)
@@ -973,8 +1104,19 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
                 return "long_cluster_zone_invalid"
 
         if "pullback" in entry_tag:
-            entry_candle = self._entry_candle(dataframe, trade)
+            entry_candle = self._entry_candle(candles_until_now, trade)
             if entry_candle is not None:
+                early_exit = self._early_false_breakout_exit(
+                    candles_until_now,
+                    entry_candle,
+                    trade,
+                    current_rate,
+                    current_profit,
+                    is_short,
+                )
+                if early_exit is not None:
+                    return early_exit
+
                 entry_stop_rate = self._planned_stop_rate(entry_candle, entry_tag, is_short)
                 if entry_stop_rate is not None:
                     if is_short and current_rate > entry_stop_rate:
@@ -982,7 +1124,7 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
                     if not is_short and current_rate < entry_stop_rate:
                         return "long_breakout_body_line_invalid"
 
-        entry_candle = self._entry_candle(dataframe, trade)
+        entry_candle = self._entry_candle(candles_until_now, trade)
         if entry_candle is None:
             return None
 
@@ -1001,8 +1143,8 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
             return "long_rr_structure_take_profit"
 
         trailing_start = self._trailing_start(entry_candle, is_short)
-        if peak_profit >= trailing_start:
-            giveback_exit_profit = peak_profit * self.large_profit_retrace_ratio
+        if self._trailing_enabled(entry_candle, is_short) and peak_profit >= trailing_start:
+            giveback_exit_profit = peak_profit * self._trailing_retrace_ratio(entry_candle, is_short)
             if current_profit <= giveback_exit_profit:
                 return "large_profit_50pct_giveback"
 
