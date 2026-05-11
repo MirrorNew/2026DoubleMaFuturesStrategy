@@ -1,0 +1,20 @@
+{
+  "Strategy": {
+    "final_equity": 25424.16,
+    "total_pct": 154.24,
+    "cagr_pct": 20.8,
+    "max_drawdown_pct": -17.72
+  },
+  "ETH": {
+    "final_equity": 9204.63,
+    "total_pct": -7.95,
+    "cagr_pct": -1.66,
+    "max_drawdown_pct": -81.38
+  },
+  "BTC": {
+    "final_equity": 22710.6,
+    "total_pct": 127.11,
+    "cagr_pct": 18.07,
+    "max_drawdown_pct": -77.24
+  }
+}
