@@ -48,6 +48,7 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
 
     timeframe = "1h"
     informative_timeframe = "4h"
+    daily_timeframe = "1d"
     can_short = True
     process_only_new_candles = True
     # 递归分析显示 ma_width 在 499 根启动 K 线后基本收敛。
@@ -55,6 +56,7 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
 
     target_notional_stake = _env_float("VDM_TARGET_STAKE", 10000.0)
     target_leverage = _env_float("VDM_TARGET_LEVERAGE", 2.0)
+    trend_continuation_leverage = _env_float("VDM_TREND_CONT_LEVERAGE", 2.0)
 
     # 等效账户杠杆默认 2x：10000U 保证金 * 2x = 20000U 名义仓位。
     # 硬止损随等效杠杆放宽，避免在结构止损前被全局 stoploss 截断。
@@ -127,6 +129,20 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
     htf_score_min = _env_int("VDM_HTF_SCORE_MIN", 3)
     htf_trend_score_min = _env_int("VDM_HTF_TREND_SCORE_MIN", 4)
     htf_slope_min = _env_float("VDM_HTF_SLOPE_MIN", 0.0)
+    # 趋势中继作为可选增强项保留：验证段没有稳定优于原策略，因此默认不强制开启。
+    trade_trend_continuation = _env_bool("VDM_TRADE_TREND_CONTINUATION", False)
+    trend_continuation_long = _env_bool("VDM_TREND_CONT_LONG", True)
+    trend_continuation_short = _env_bool("VDM_TREND_CONT_SHORT", False)
+    trend_continuation_score_min = _env_int("VDM_TREND_CONT_SCORE", 5)
+    trend_continuation_htf_score_min = _env_int("VDM_TREND_CONT_HTF_SCORE", 4)
+    use_daily_trend_context = _env_bool("VDM_USE_DAILY_TREND_CONTEXT", True)
+    trend_continuation_daily_score_min = _env_int("VDM_TREND_CONT_DAILY_SCORE", 4)
+    trend_continuation_daily_require_order = _env_bool("VDM_TREND_CONT_DAILY_ORDER", True)
+    trend_continuation_pullback_atr = _env_float("VDM_TREND_CONT_PULLBACK_ATR", 0.25)
+    trend_continuation_stop_atr = _env_float("VDM_TREND_CONT_STOP_ATR", 0.20)
+    trend_continuation_min_extension_atr = _env_float("VDM_TREND_CONT_MIN_EXTENSION_ATR", 0.80)
+    trend_continuation_max_extension_atr = _env_float("VDM_TREND_CONT_MAX_EXTENSION_ATR", 3.50)
+    trend_continuation_cooldown = _env_int("VDM_TREND_CONT_COOLDOWN", 72)
     # 0 = 周末正常开仓；1 = 周末保守开仓，固定小止盈/密集框止损；2 = 周末不新开仓。
     weekend_entry_mode = _env_int("VDM_WEEKEND_MODE", 0)
     weekend_profit_target = _env_float("VDM_WEEKEND_PROFIT_TARGET", 0.008)
@@ -163,9 +179,21 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
         self._trade_peak_profit: dict[str, float] = {}
 
     def informative_pairs(self):
-        if not (self.use_htf_context or self.use_htf_filter):
+        dp = getattr(self, "dp", None)
+        if dp is None:
             return []
-        return [(pair, self.informative_timeframe) for pair in self.dp.current_whitelist()]
+        use_4h = self.use_htf_context or self.use_htf_filter or self.trade_trend_continuation
+        use_1d = self.use_daily_trend_context and self.trade_trend_continuation
+        if not (use_4h or use_1d):
+            return []
+
+        pairs = []
+        for pair in dp.current_whitelist():
+            if use_4h:
+                pairs.append((pair, self.informative_timeframe))
+            if use_1d:
+                pairs.append((pair, self.daily_timeframe))
+        return list(dict.fromkeys(pairs))
 
     @staticmethod
     def _sma(series: pd.Series, window: int) -> pd.Series:
@@ -186,6 +214,8 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
         side: str,
         **kwargs,
     ) -> float:
+        if entry_tag and "trend_continuation" in entry_tag:
+            return max(1.0, min(self.trend_continuation_leverage, max_leverage))
         return max(1.0, min(self.target_leverage, max_leverage))
 
     def custom_stake_amount(
@@ -465,6 +495,17 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
                     stop_rate = entry_candle.get("fast_band_high", float("nan")) + atr_buffer
                 else:
                     stop_rate = entry_candle.get("fast_band_low", float("nan")) - atr_buffer
+        elif "trend_continuation" in entry_tag:
+            if is_short:
+                stop_rate = max(
+                    float(entry_candle.get("fast_band_high", float("nan"))),
+                    float(entry_candle.get("mid_mid", float("nan"))),
+                ) + atr * self.trend_continuation_stop_atr
+            else:
+                stop_rate = min(
+                    float(entry_candle.get("fast_band_low", float("nan"))),
+                    float(entry_candle.get("mid_mid", float("nan"))),
+                ) - atr * self.trend_continuation_stop_atr
         else:
             return None
 
@@ -848,14 +889,25 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
         return dataframe
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        if (self.use_htf_context or self.use_htf_filter) and self.dp:
-            informative = self.dp.get_pair_dataframe(pair=metadata["pair"], timeframe=self.informative_timeframe)
+        dp = getattr(self, "dp", None)
+        if (self.use_htf_context or self.use_htf_filter or self.trade_trend_continuation) and dp is not None:
+            informative = dp.get_pair_dataframe(pair=metadata["pair"], timeframe=self.informative_timeframe)
             informative = self._populate_htf_indicators(informative.copy())
             dataframe = merge_informative_pair(
                 dataframe,
                 informative,
                 self.timeframe,
                 self.informative_timeframe,
+                ffill=True,
+            )
+        if self.use_daily_trend_context and self.trade_trend_continuation and dp is not None:
+            informative_daily = dp.get_pair_dataframe(pair=metadata["pair"], timeframe=self.daily_timeframe)
+            informative_daily = self._populate_htf_indicators(informative_daily.copy())
+            dataframe = merge_informative_pair(
+                dataframe,
+                informative_daily,
+                self.timeframe,
+                self.daily_timeframe,
                 ffill=True,
             )
 
@@ -987,6 +1039,81 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
             & (dataframe["close"] < dataframe["open"])
         )
 
+        long_htf_score = dataframe.get("long_direction_score_4h", pd.Series(0, index=dataframe.index)).fillna(0)
+        short_htf_score = dataframe.get("short_direction_score_4h", pd.Series(0, index=dataframe.index)).fillna(0)
+        long_daily_score = dataframe.get("long_direction_score_1d", pd.Series(0, index=dataframe.index)).fillna(0)
+        short_daily_score = dataframe.get("short_direction_score_1d", pd.Series(0, index=dataframe.index)).fillna(0)
+        daily_long_order = (
+            (dataframe.get("fast_mid_1d", pd.Series(0, index=dataframe.index)) > dataframe.get("mid_mid_1d", pd.Series(0, index=dataframe.index)))
+            & (dataframe.get("mid_mid_1d", pd.Series(0, index=dataframe.index)) > dataframe.get("slow_mid_1d", pd.Series(0, index=dataframe.index)))
+        )
+        daily_short_order = (
+            (dataframe.get("fast_mid_1d", pd.Series(0, index=dataframe.index)) < dataframe.get("mid_mid_1d", pd.Series(0, index=dataframe.index)))
+            & (dataframe.get("mid_mid_1d", pd.Series(0, index=dataframe.index)) < dataframe.get("slow_mid_1d", pd.Series(0, index=dataframe.index)))
+        )
+        daily_long_ok = long_daily_score >= self.trend_continuation_daily_score_min
+        daily_short_ok = short_daily_score >= self.trend_continuation_daily_score_min
+        if self.trend_continuation_daily_require_order:
+            daily_long_ok = daily_long_ok & daily_long_order
+            daily_short_ok = daily_short_ok & daily_short_order
+        atr_safe = dataframe["atr_14"].replace(0, pd.NA)
+        long_extension_atr = (dataframe["close"] - dataframe["slow_mid"]) / atr_safe
+        short_extension_atr = (dataframe["slow_mid"] - dataframe["close"]) / atr_safe
+        dataframe["trend_continuation_long_raw"] = (
+            self.trade_trend_continuation
+            & self.trend_continuation_long
+            & (dataframe["long_direction_score"] >= self.trend_continuation_score_min)
+            & (long_htf_score >= self.trend_continuation_htf_score_min)
+            & daily_long_ok
+            & (dataframe["fast_mid"] > dataframe["mid_mid"])
+            & (dataframe["mid_mid"] > dataframe["slow_mid"])
+            & (dataframe["fast_mid_slope"] > 0)
+            & (dataframe["low"] <= dataframe["fast_band_high"] + dataframe["atr_14"] * self.trend_continuation_pullback_atr)
+            & (dataframe["low"] >= dataframe["mid_mid"] - dataframe["atr_14"] * self.trend_continuation_pullback_atr)
+            & (dataframe["close"] > dataframe["fast_band_high"])
+            & (dataframe["close"] > dataframe["open"])
+            & (long_extension_atr >= self.trend_continuation_min_extension_atr)
+            & (long_extension_atr <= self.trend_continuation_max_extension_atr)
+        )
+        dataframe["trend_continuation_short_raw"] = (
+            self.trade_trend_continuation
+            & self.trend_continuation_short
+            & (dataframe["short_direction_score"] >= self.trend_continuation_score_min)
+            & (short_htf_score >= self.trend_continuation_htf_score_min)
+            & daily_short_ok
+            & (dataframe["fast_mid"] < dataframe["mid_mid"])
+            & (dataframe["mid_mid"] < dataframe["slow_mid"])
+            & (dataframe["fast_mid_slope"] < 0)
+            & (dataframe["high"] >= dataframe["fast_band_low"] - dataframe["atr_14"] * self.trend_continuation_pullback_atr)
+            & (dataframe["high"] <= dataframe["mid_mid"] + dataframe["atr_14"] * self.trend_continuation_pullback_atr)
+            & (dataframe["close"] < dataframe["fast_band_low"])
+            & (dataframe["close"] < dataframe["open"])
+            & (short_extension_atr >= self.trend_continuation_min_extension_atr)
+            & (short_extension_atr <= self.trend_continuation_max_extension_atr)
+        )
+        dataframe["trend_continuation_long"] = (
+            dataframe["trend_continuation_long_raw"]
+            & (
+                dataframe["trend_continuation_long_raw"]
+                .shift(1)
+                .rolling(self.trend_continuation_cooldown, min_periods=1)
+                .sum()
+                .fillna(0)
+                == 0
+            )
+        )
+        dataframe["trend_continuation_short"] = (
+            dataframe["trend_continuation_short_raw"]
+            & (
+                dataframe["trend_continuation_short_raw"]
+                .shift(1)
+                .rolling(self.trend_continuation_cooldown, min_periods=1)
+                .sum()
+                .fillna(0)
+                == 0
+            )
+        )
+
         dataframe["cluster_stop_long"] = (
             (dataframe["close"] < dataframe["cluster_zone_low"] - dataframe["atr_14"] * self.invalid_break_atr_buffer)
             & (dataframe["close"].shift(1) < dataframe["cluster_zone_low"].shift(1) - dataframe["atr_14"].shift(1) * self.invalid_break_atr_buffer)
@@ -1065,6 +1192,22 @@ class VideoDoubleMaFuturesStrategy(IStrategy):
             & weekend_entry_ok,
             ["enter_short", "enter_tag"],
         ] = (int(self.trade_weak_breakouts), "short_weak_breakout_pullback")
+
+        dataframe.loc[
+            (dataframe["volume"] > 0)
+            & dataframe["trend_continuation_long"]
+            & long_htf_ok
+            & weekend_entry_ok,
+            ["enter_long", "enter_tag"],
+        ] = (int(self.trade_trend_continuation and self.trend_continuation_long), "long_trend_continuation_pullback")
+
+        dataframe.loc[
+            (dataframe["volume"] > 0)
+            & dataframe["trend_continuation_short"]
+            & short_htf_ok
+            & weekend_entry_ok,
+            ["enter_short", "enter_tag"],
+        ] = (int(self.trade_trend_continuation and self.trend_continuation_short), "short_trend_continuation_pullback")
 
         return dataframe
 

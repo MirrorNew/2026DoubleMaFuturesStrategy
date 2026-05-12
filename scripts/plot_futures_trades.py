@@ -65,6 +65,7 @@ def find_data_file(data_dir: Path, pair: str, timeframe: str) -> Path:
 
 def add_indicators(dataframe: pd.DataFrame, pair: str) -> pd.DataFrame:
     strategy = VideoDoubleMaFuturesStrategy({})
+    strategy.dp = None
     return strategy.populate_indicators(dataframe.copy(), {"pair": pair})
 
 

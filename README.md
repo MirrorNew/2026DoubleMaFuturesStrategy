@@ -43,6 +43,17 @@ Same period, normalized to `10,000 USDT`.
 | ETH buy-and-hold | 9,204.63 | -7.95% | -1.66% | -81.38% |
 | BTC buy-and-hold | 22,710.60 | 127.11% | 18.07% | -77.24% |
 
+## Monte Carlo Stress Test
+
+The stress test generates fat-tailed, volatility-clustered, calendar-seasonal, jump-risk, BTC/ETH bootstrap, and black-swan synthetic 1h paths.
+
+Main takeaway: the simpler stable strategy is more robust than the optional trend-continuation variant in stress tests.
+
+![Monte Carlo stress curves](reports/futures_backtests/monte_carlo/monte_carlo_equity_curves.svg)
+
+- Report: `reports/futures_backtests/MONTE_CARLO_STRESS_TEST.md`
+- Script: `scripts/monte_carlo_stress_test.py`
+
 ## Key Files
 
 - Strategy: `user_data/strategies/VideoDoubleMaFuturesStrategy.py`

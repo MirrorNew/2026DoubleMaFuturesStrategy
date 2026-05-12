@@ -12,6 +12,7 @@ reports/futures_backtests/plots*/
 reports/futures_backtests/**/*.html
 reports/futures_backtests/**/*.zip
 reports/futures_backtests/**/*.feather
+reports/futures_backtests/monte_carlo/trades_*.csv
 reports/video_*/
 user_data/plot/
 
